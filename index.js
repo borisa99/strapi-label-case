@@ -31,11 +31,12 @@ const { data: configurationData } = await client.get(
 );
 
 const configuration = delve(configurationData, "data.contentType", null);
-if (configuration) {
-  delete configuration.uid;
-  delete configuration.metadatas.tags.list.mainField;
-  delete configuration.metadatas.author.list.mainField;
-}
+if (!configuration) return;
+
+// Required formatting for PUT request
+delete configuration.uid;
+delete configuration.metadatas.tags.list.mainField;
+delete configuration.metadatas.author.list.mainField;
 
 // Update configuration
 // Params:layouts, metadatas, components
