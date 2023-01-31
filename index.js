@@ -77,7 +77,6 @@ try {
     { headers }
   );
 } catch (error) {
-  console.log("🚀 ~ error", error.response.data.error);
   if (error.config) {
     const { baseURL, url, method } = error.config;
     console.log(error.message, method, baseURL + url);
