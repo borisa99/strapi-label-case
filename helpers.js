@@ -1,3 +1,5 @@
+import client from "./client.js";
+
 const toLabelCase = (str) =>
   str
     .replace(/([A-Z])/g, " $1")
@@ -5,7 +7,7 @@ const toLabelCase = (str) =>
 
 const isObjectEmpty = (objectName) => Object.keys(objectName).length === 0;
 
-export const updateMetadatasLabel = (metadatas) => {
+const updateMetadatasLabel = (metadatas) => {
   const result = {};
   Object.keys(metadatas).map((key) => {
     const field = Object.assign({}, metadatas[key]);
@@ -22,4 +24,19 @@ export const updateMetadatasLabel = (metadatas) => {
   });
 
   return result;
+};
+
+export const generatePromises = async (type, data) => {
+  const promises = [];
+  Object.keys(data).map((key) => {
+    const item = data[key];
+    promises.push(
+      client.put(`/content-manager/${type}/${item.uid}/configuration`, {
+        settings: item.settings,
+        layouts: item.layouts,
+        metadatas: updateMetadatasLabel(item.metadatas),
+      })
+    );
+  });
+  return promises;
 };
