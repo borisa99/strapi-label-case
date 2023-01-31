@@ -1,6 +1,9 @@
 import delve from "dlv";
 import dotenv from "dotenv";
 import axios from "axios";
+
+import { updateMetadatasLabel } from "./helpers.js";
+
 dotenv.config();
 
 try {
@@ -12,22 +15,18 @@ try {
     headers: { "Content-Type": "application/json" },
   });
 
-  const toLabelCase = (str) =>
-    str
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase().trim());
-
-  const isObjectEmpty = (objectName) => Object.keys(objectName).length === 0;
-
-  // Call a login endpoint
+  // ------- Call a login endpoint -------
   // /configuration API is nto accessible with API Key
   const { data: loginData } = await client.post("/admin/login", {
     email: process.env.STRAPI_ADMIN_EMAIL,
     password: process.env.STRAPI_ADMIN_PASSWORD,
   });
   const token = delve(loginData, "data.token", null);
+  const headers = {
+    Authorization: `Bearer ${token}`,
+  };
 
-  // Get current configuration
+  // ------- Get current configuration -------
   // Params:
   // uid - collection-type uid
   const uid = process.env.COLLECTION_TYPE_UID;
@@ -40,38 +39,45 @@ try {
     }
   );
 
+  // Update Content-Type metadata
   const configuration = delve(configurationData, "data.contentType", null);
   if (!configuration) throw new Error("Configuration not found");
 
-  // Required formatting for PUT request
   delete configuration.uid;
+  configuration.metadatas = updateMetadatasLabel(configuration.metadatas);
 
-  Object.keys(configuration.metadatas).map((key) => {
-    const field = Object.assign({}, configuration.metadatas[key]);
-    delete field.edit.mainField;
-    delete field.list.mainField;
+  // Update child components metadata
+  const updateComponentRequests = [];
+  const components = delve(configurationData, "data.components", null);
 
-    if (!isObjectEmpty(field.edit)) {
-      field.edit = { ...field.edit, label: toLabelCase(field.edit.label) };
-    }
-    if (!isObjectEmpty(field.list)) {
-      field.list = { ...field.list, label: toLabelCase(field.list.label) };
-    }
-    configuration.metadatas[key] = field;
+  Object.keys(components).map((key) => {
+    const component = components[key];
+    updateComponentRequests.push(
+      client.put(
+        `/content-manager/components/${component.uid}/configuration`,
+        {
+          settings: component.settings,
+          layouts: component.layouts,
+          metadatas: updateMetadatasLabel(component.metadatas),
+        },
+        { headers }
+      )
+    );
   });
 
-  // Update configuration
-  // Params:layouts, metadatas, components
+  // ------- Update Component configuration -------
+  // Params: settings,layouts, metadatas
+  await Promise.all(updateComponentRequests);
+
+  // ------- Update Content-Type configuration -------
+  // Params: settings,layouts, metadatas
   await client.put(
     `/content-manager/content-types/${uid}/configuration`,
     configuration,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+    { headers }
   );
 } catch (error) {
+  console.log("🚀 ~ error", error.response.data.error);
   if (error.config) {
     const { baseURL, url, method } = error.config;
     console.log(error.message, method, baseURL + url);
