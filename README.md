@@ -38,6 +38,6 @@ Install dependencies
 Start the script
 
 ```bash
-  COLLECTION_TYPE_UID="your-collection-type-uid" node
+  COLLECTION_TYPE_UID="your-collection-type-uid" node index.js
 ```
 
