@@ -13,6 +13,8 @@ import client, { authenticate } from "./client.js";
 
 try {
   await authenticate();
+  await fs.rmSync("generated", { recursive: true, force: true });
+  await fs.mkdirSync("generated");
 
   // ----- Content-Types -----
   const { data: ctData } = await client.get("/content-manager/content-types");
